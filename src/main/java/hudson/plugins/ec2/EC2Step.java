@@ -31,6 +31,8 @@ import hudson.model.labels.LabelAtom;
 import hudson.slaves.Cloud;
 import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
+
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
 import org.jenkinsci.plugins.workflow.steps.*;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -147,6 +149,7 @@ public class EC2Step extends Step {
                     EnumSet<SlaveTemplate.ProvisionOptions> opt = EnumSet.noneOf(SlaveTemplate.ProvisionOptions.class);
                     opt.add(universe);
 
+                    final ProvisioningActivity.Id provisioningId = new ProvisioningActivity.Id(cl.getDisplayName(), t.getDisplayName());
                     EC2AbstractSlave instance = t.provision(TaskListener.NULL, lbl, opt);
                     Instance myInstance = EC2AbstractSlave.getInstance(instance.getInstanceId(), instance.getCloud());
                     return myInstance;

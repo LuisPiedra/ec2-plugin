@@ -83,6 +83,8 @@ import hudson.model.TaskListener;
 import jenkins.model.Jenkins;
 
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
+import org.jenkinsci.plugins.cloudstats.TrackedPlannedNode;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -320,7 +322,8 @@ public abstract class EC2Cloud extends Cloud {
 
         StringWriter sw = new StringWriter();
         StreamTaskListener listener = new StreamTaskListener(sw);
-        EC2AbstractSlave node = t.attach(id, listener);
+        final ProvisioningActivity.Id provisioningId = new ProvisioningActivity.Id(this.getDisplayName(), t.getDisplayName());
+        EC2AbstractSlave node = t.attach(provisioningId, id, listener);
         Jenkins.getInstance().addNode(node);
 
         rsp.sendRedirect2(req.getContextPath() + "/computer/" + node.getNodeName());
@@ -337,6 +340,7 @@ public abstract class EC2Cloud extends Cloud {
         }
 
         try {
+        	
             EC2AbstractSlave node = getNewOrExistingAvailableSlave(t, null, true);
             if (node == null)
                 throw HttpResponses.error(SC_BAD_REQUEST, "Cloud or AMI instance cap would be exceeded for: " + template);
@@ -531,6 +535,7 @@ public abstract class EC2Cloud extends Cloud {
                 provisionOptions = EnumSet.of(SlaveTemplate.ProvisionOptions.FORCE_CREATE);
             else if (possibleSlavesCount > 0)
                 provisionOptions = EnumSet.of(SlaveTemplate.ProvisionOptions.ALLOW_CREATE);
+            
             return template.provision(StreamTaskListener.fromStdout(), requiredLabel, provisionOptions);
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Exception during provisioning", e);
@@ -548,6 +553,7 @@ public abstract class EC2Cloud extends Cloud {
                 LOGGER.log(Level.WARNING, String.format("Label is null - can't calculate how many executors slave will have. Using %s number of executors", t.getNumExecutors()));
             }
             while (excessWorkload > 0) {
+
                 final EC2AbstractSlave slave = getNewOrExistingAvailableSlave(t, label, false);
                 // Returned null if a new node could not be created
                 if (slave == null)
@@ -555,8 +561,10 @@ public abstract class EC2Cloud extends Cloud {
                 LOGGER.log(Level.INFO, String.format("We have now %s computers", Jenkins.getInstance().getComputers().length));
                 if (t.isNode()) {
                     Jenkins.getInstance().addNode(slave);
+                    
                     LOGGER.log(Level.INFO, String.format("Added node named: %s, We have now %s computers", slave.getNodeName(), Jenkins.getInstance().getComputers().length));
-                    r.add(new PlannedNode(t.getDisplayName(), Computer.threadPoolForRemoting.submit(new Callable<Node>() {
+                    
+                    r.add(new TrackedPlannedNode(slave.getId(), t.getNumExecutors(), Computer.threadPoolForRemoting.submit(new Callable<Node>() {
 
                         public Node call() throws Exception {
                             long startTime = System.currentTimeMillis(); // fetch starting time
@@ -566,7 +574,7 @@ public abstract class EC2Cloud extends Cloud {
                             LOGGER.log(Level.WARNING, "Expected - Instance - failed to connect within launch timeout");
                             return tryToCallSlave(slave, t);
                         }
-                    }), t.getNumExecutors()));
+                    })));
                 }
 
                 excessWorkload -= t.getNumExecutors();

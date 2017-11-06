@@ -1,6 +1,8 @@
 package hudson.plugins.ec2;
 
 import hudson.slaves.NodeProperty;
+
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -18,7 +20,8 @@ public class EC2AbstractSlaveTest {
 
     @Test
     public void testGetLaunchTimeoutInMillisShouldNotOverflow() throws Exception {
-        EC2AbstractSlave slave = new EC2AbstractSlave("name", "id", "description", "fs", 1, null, "label", null, null, "init", "tmpDir", new ArrayList<NodeProperty<?>>(), "root", "jvm", false, "idle", null, "cloud", false, false, Integer.MAX_VALUE, new UnixData("remote", null, "22")) {
+    	final ProvisioningActivity.Id provisioningId = new ProvisioningActivity.Id("cloud", "template");
+        EC2AbstractSlave slave = new EC2AbstractSlave(provisioningId, "name", "id", "description", "fs", 1, null, "label", null, null, "init", "tmpDir", new ArrayList<NodeProperty<?>>(), "root", "jvm", false, "idle", null, "cloud", false, false, Integer.MAX_VALUE, new UnixData("remote", null, "22")) {
             @Override
             public void terminate() {
                 // To change body of implemented methods use File | Settings |

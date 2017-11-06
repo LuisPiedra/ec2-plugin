@@ -5,6 +5,8 @@ import hudson.model.Label;
 import hudson.model.Result;
 import hudson.model.TaskListener;
 import hudson.plugins.ec2.util.PluginTestRule;
+
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;

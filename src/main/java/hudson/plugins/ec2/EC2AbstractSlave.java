@@ -36,6 +36,7 @@ import hudson.slaves.ComputerLauncher;
 import hudson.slaves.RetentionStrategy;
 import hudson.util.ListBoxModel;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
@@ -49,6 +50,8 @@ import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.cloudstats.TrackedItem;
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -74,7 +77,7 @@ import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
  * @author Kohsuke Kawaguchi
  */
 @SuppressWarnings("serial")
-public abstract class EC2AbstractSlave extends Slave {
+public abstract class EC2AbstractSlave extends Slave implements TrackedItem {
     private static final Logger LOGGER = Logger.getLogger(EC2AbstractSlave.class.getName());
 
     protected String instanceId;
@@ -127,8 +130,11 @@ public abstract class EC2AbstractSlave extends Slave {
     private transient long createdTime;
 
     public static final String TEST_ZONE = "testZone";
+    
+    //Support for cloud statistics
+    protected ProvisioningActivity.Id provisioningId;
 
-    public EC2AbstractSlave(String name, String instanceId, String description, String remoteFS, int numExecutors, Mode mode, String labelString, ComputerLauncher launcher, RetentionStrategy<EC2Computer> retentionStrategy, String initScript, String tmpDir, List<? extends NodeProperty<?>> nodeProperties, String remoteAdmin, String jvmopts, boolean stopOnTerminate, String idleTerminationMinutes, List<EC2Tag> tags, String cloudName, boolean usePrivateDnsName, boolean useDedicatedTenancy, int launchTimeout, AMITypeData amiType)
+    public EC2AbstractSlave(ProvisioningActivity.Id id, String name, String instanceId, String description, String remoteFS, int numExecutors, Mode mode, String labelString, ComputerLauncher launcher, RetentionStrategy<EC2Computer> retentionStrategy, String initScript, String tmpDir, List<? extends NodeProperty<?>> nodeProperties, String remoteAdmin, String jvmopts, boolean stopOnTerminate, String idleTerminationMinutes, List<EC2Tag> tags, String cloudName, boolean usePrivateDnsName, boolean useDedicatedTenancy, int launchTimeout, AMITypeData amiType)
             throws FormException, IOException {
 
         super(name, "", remoteFS, numExecutors, mode, labelString, launcher, retentionStrategy, nodeProperties);
@@ -147,6 +153,7 @@ public abstract class EC2AbstractSlave extends Slave {
         this.cloudName = cloudName;
         this.launchTimeout = launchTimeout;
         this.amiType = amiType;
+        this.provisioningId = id;
         readResolve();
     }
 
@@ -570,6 +577,12 @@ public abstract class EC2AbstractSlave extends Slave {
         public List<Descriptor<AMITypeData>> getAMITypeDescriptors() {
             return Jenkins.getInstance().<AMITypeData, Descriptor<AMITypeData>> getDescriptorList(AMITypeData.class);
         }
+    }
+    
+    @Nullable
+    @Override
+    public ProvisioningActivity.Id getId() {
+        return provisioningId;
     }
 
 }

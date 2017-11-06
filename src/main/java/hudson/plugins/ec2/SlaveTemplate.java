@@ -34,6 +34,8 @@ import jenkins.slaves.iterators.api.NodeIterator;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity.Id;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
@@ -465,7 +467,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
     private EC2AbstractSlave provisionOndemand(TaskListener listener, Label requiredLabel, EnumSet<ProvisionOptions> provisionOptions) throws AmazonClientException, IOException {
         PrintStream logger = listener.getLogger();
         AmazonEC2 ec2 = getParent().connect();
-
+        
         try {
             logProvisionInfo(logger, "Considering launching " + ami + " for template " + description);
 
@@ -613,7 +615,8 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
                 Instance inst = ec2.runInstances(riRequest).getReservation().getInstances().get(0);
 
                 logProvisionInfo(logger, "No existing instance found - created new instance: " + inst);
-                return newOndemandSlave(inst);
+                final ProvisioningActivity.Id provisioningId = new ProvisioningActivity.Id(this.getParent().getDisplayName(), this.getDisplayName(), inst.getInstanceId());
+                return newOndemandSlave(provisioningId, inst);
             }
 
             if (existingInstance.getState().getName().equalsIgnoreCase(InstanceStateName.Stopping.toString())
@@ -637,7 +640,8 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
 
             // Existing slave not found
             logProvision(logger, "Creating new slave for existing instance: " + existingInstance);
-            return newOndemandSlave(existingInstance);
+            final ProvisioningActivity.Id provisioningId = new ProvisioningActivity.Id(this.getParent().getDisplayName(), this.getDisplayName(), existingInstance.getInstanceId());
+            return newOndemandSlave(provisioningId, existingInstance);
 
         } catch (FormException e) {
             throw new AssertionError(e); // we should have discovered all
@@ -742,10 +746,13 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
 
     /**
      * Provision a new slave for an EC2 spot instance to call back to Jenkins
+     * @param provisioningId 
      */
     private EC2AbstractSlave provisionSpot(TaskListener listener) throws AmazonClientException, IOException {
         PrintStream logger = listener.getLogger();
         AmazonEC2 ec2 = getParent().connect();
+        
+        final ProvisioningActivity.Id provisioningId = new ProvisioningActivity.Id(this.getParent().getDisplayName(), this.getDisplayName());
 
         try {
             logger.println("Launching " + ami + " for template " + description);
@@ -882,7 +889,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             logger.println("Spot instance id in provision: " + spotInstReq.getSpotInstanceRequestId());
             LOGGER.info("Spot instance id in provision: " + spotInstReq.getSpotInstanceRequestId());
 
-            return newSpotSlave(spotInstReq, slaveName);
+            return newSpotSlave(provisioningId, spotInstReq, slaveName);
 
         } catch (FormException e) {
             throw new AssertionError(); // we should have discovered all
@@ -893,15 +900,15 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
         }
     }
 
-    protected EC2OndemandSlave newOndemandSlave(Instance inst) throws FormException, IOException {
-        return new EC2OndemandSlave(inst.getInstanceId(), description, remoteFS, getNumExecutors(), labels, mode, initScript,
+    protected EC2OndemandSlave newOndemandSlave(ProvisioningActivity.Id id, Instance inst) throws FormException, IOException {
+        return new EC2OndemandSlave(id, inst.getInstanceId(), description, remoteFS, getNumExecutors(), labels, mode, initScript,
                 tmpDir, remoteAdmin, jvmopts, stopOnTerminate, idleTerminationMinutes, inst.getPublicDnsName(),
                 inst.getPrivateDnsName(), EC2Tag.fromAmazonTags(inst.getTags()), parent.name, usePrivateDnsName,
                 useDedicatedTenancy, getLaunchTimeout(), amiType);
     }
 
-    protected EC2SpotSlave newSpotSlave(SpotInstanceRequest sir, String name) throws FormException, IOException {
-        return new EC2SpotSlave(name, sir.getSpotInstanceRequestId(), description, remoteFS, getNumExecutors(), mode, initScript,
+    protected EC2SpotSlave newSpotSlave(ProvisioningActivity.Id id, SpotInstanceRequest sir, String name) throws FormException, IOException {
+        return new EC2SpotSlave(id, name, sir.getSpotInstanceRequestId(), description, remoteFS, getNumExecutors(), mode, initScript,
                 tmpDir, labels, remoteAdmin, jvmopts, idleTerminationMinutes, EC2Tag.fromAmazonTags(sir.getTags()), parent.name,
                 usePrivateDnsName, getLaunchTimeout(), amiType);
     }
@@ -990,7 +997,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
     /**
      * Provisions a new EC2 slave based on the currently running instance on EC2, instead of starting a new one.
      */
-    public EC2AbstractSlave attach(String instanceId, TaskListener listener) throws AmazonClientException, IOException {
+    public EC2AbstractSlave attach(ProvisioningActivity.Id provisioningId, String instanceId, TaskListener listener) throws AmazonClientException, IOException {
         PrintStream logger = listener.getLogger();
         AmazonEC2 ec2 = getParent().connect();
 
@@ -1000,7 +1007,7 @@ public class SlaveTemplate implements Describable<SlaveTemplate> {
             DescribeInstancesRequest request = new DescribeInstancesRequest();
             request.setInstanceIds(Collections.singletonList(instanceId));
             Instance inst = ec2.describeInstances(request).getReservations().get(0).getInstances().get(0);
-            return newOndemandSlave(inst);
+            return newOndemandSlave(provisioningId, inst);
         } catch (FormException e) {
             throw new AssertionError(); // we should have discovered all
                                         // configuration issues upfront

@@ -7,6 +7,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import jenkins.model.Jenkins;
+
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import com.amazonaws.AmazonClientException;
@@ -31,16 +33,16 @@ public final class EC2SpotSlave extends EC2AbstractSlave {
 
     private final String spotInstanceRequestId;
 
-    public EC2SpotSlave(String name, String spotInstanceRequestId, String description, String remoteFS, int numExecutors, Mode mode, String initScript, String tmpDir, String labelString, String remoteAdmin, String jvmopts, String idleTerminationMinutes, List<EC2Tag> tags, String cloudName, boolean usePrivateDnsName, int launchTimeout, AMITypeData amiType)
+    public EC2SpotSlave(ProvisioningActivity.Id id, String name, String spotInstanceRequestId, String description, String remoteFS, int numExecutors, Mode mode, String initScript, String tmpDir, String labelString, String remoteAdmin, String jvmopts, String idleTerminationMinutes, List<EC2Tag> tags, String cloudName, boolean usePrivateDnsName, int launchTimeout, AMITypeData amiType)
             throws FormException, IOException {
-        this(description + " (" + name + ")", spotInstanceRequestId, description, remoteFS, numExecutors, mode, initScript, tmpDir, labelString, Collections.<NodeProperty<?>> emptyList(), remoteAdmin, jvmopts, idleTerminationMinutes, tags, cloudName, usePrivateDnsName, launchTimeout, amiType);
+        this(id, description + " (" + name + ")", spotInstanceRequestId, description, remoteFS, numExecutors, mode, initScript, tmpDir, labelString, Collections.<NodeProperty<?>> emptyList(), remoteAdmin, jvmopts, idleTerminationMinutes, tags, cloudName, usePrivateDnsName, launchTimeout, amiType);
     }
 
     @DataBoundConstructor
-    public EC2SpotSlave(String name, String spotInstanceRequestId, String description, String remoteFS, int numExecutors, Mode mode, String initScript, String tmpDir, String labelString, List<? extends NodeProperty<?>> nodeProperties, String remoteAdmin, String jvmopts, String idleTerminationMinutes, List<EC2Tag> tags, String cloudName, boolean usePrivateDnsName, int launchTimeout, AMITypeData amiType)
+    public EC2SpotSlave(ProvisioningActivity.Id id, String name, String spotInstanceRequestId, String description, String remoteFS, int numExecutors, Mode mode, String initScript, String tmpDir, String labelString, List<? extends NodeProperty<?>> nodeProperties, String remoteAdmin, String jvmopts, String idleTerminationMinutes, List<EC2Tag> tags, String cloudName, boolean usePrivateDnsName, int launchTimeout, AMITypeData amiType)
             throws FormException, IOException {
 
-        super(name, "", description, remoteFS, numExecutors, mode, labelString, amiType.isWindows() ? new EC2WindowsLauncher() :
+        super(id, name, "", description, remoteFS, numExecutors, mode, labelString, amiType.isWindows() ? new EC2WindowsLauncher() :
                 new EC2UnixLauncher(), new EC2RetentionStrategy(idleTerminationMinutes), initScript, tmpDir, nodeProperties, remoteAdmin, jvmopts, false, idleTerminationMinutes, tags, cloudName, usePrivateDnsName, false, launchTimeout, amiType);
 
         this.name = name;

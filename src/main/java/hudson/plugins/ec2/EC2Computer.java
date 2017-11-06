@@ -33,7 +33,10 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.annotation.Nullable;
 
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
+import org.jenkinsci.plugins.cloudstats.TrackedItem;
 import org.kohsuke.stapler.HttpRedirect;
 import org.kohsuke.stapler.HttpResponse;
 import com.amazonaws.AmazonClientException;
@@ -47,7 +50,7 @@ import com.amazonaws.services.ec2.model.Instance;
 /**
  * @author Kohsuke Kawaguchi
  */
-public class EC2Computer extends SlaveComputer {
+public class EC2Computer extends SlaveComputer implements TrackedItem {
     private static final Logger LOGGER = Logger.getLogger(EC2Computer.class.getName());
 
 
@@ -55,9 +58,12 @@ public class EC2Computer extends SlaveComputer {
      * Cached description of this EC2 instance. Lazily fetched.
      */
     private volatile Instance ec2InstanceDescription;
+    
+    private final ProvisioningActivity.Id provisioningId;
 
     public EC2Computer(EC2AbstractSlave slave) {
         super(slave);
+        this.provisioningId = slave.getId();
     }
 
     @Override
@@ -237,4 +243,9 @@ public class EC2Computer extends SlaveComputer {
         }
     }
 
+    @Nullable
+    @Override
+    public ProvisioningActivity.Id getId() {
+        return provisioningId;
+    }
 }

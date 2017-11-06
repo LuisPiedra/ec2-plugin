@@ -2,6 +2,8 @@ package hudson.plugins.ec2;
 
 import com.amazonaws.AmazonClientException;
 import hudson.slaves.NodeProperty;
+
+import org.jenkinsci.plugins.cloudstats.ProvisioningActivity;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -47,7 +49,8 @@ public class EC2RetentionStrategyTest {
     }
 
     private EC2Computer computerWithIdleTime(final int minutes, final int seconds) throws Exception {
-        final EC2AbstractSlave slave = new EC2AbstractSlave("name", "id", "description", "fs", 1, null, "label", null, null, "init", "tmpDir", new ArrayList<NodeProperty<?>>(), "remote", "jvm", false, "idle", null, "cloud", false, false, Integer.MAX_VALUE, null) {
+    	final ProvisioningActivity.Id provisioningId = new ProvisioningActivity.Id("cloud", "template");
+        final EC2AbstractSlave slave = new EC2AbstractSlave(provisioningId, "name", "id", "description", "fs", 1, null, "label", null, null, "init", "tmpDir", new ArrayList<NodeProperty<?>>(), "remote", "jvm", false, "idle", null, "cloud", false, false, Integer.MAX_VALUE, null) {
             @Override
             public void terminate() {
             }
